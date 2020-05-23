@@ -1,0 +1,2 @@
+Graphics Card Description : NVIDIA GeForce GTX 1060 3GB
+Graphics Card Memory size : 2988
