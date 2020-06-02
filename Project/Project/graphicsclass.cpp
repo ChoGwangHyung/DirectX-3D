@@ -7,7 +7,18 @@ GraphicsClass::GraphicsClass()
 
 	for (int i = 0; i < 4; i++)
 		m_Model[i] = 0;
+	m_LightShader = 0;
+	m_Light = 0;
+
 	m_TextureShader = 0;
+	m_Bitmap = 0;
+	m_Text = 0;
+
+	useLightingEffect[0] = true;
+	useLightingEffect[1] = true;
+	useLightingEffect[2] = true;
+
+	allPolygonCount = 0;
 }
 
 GraphicsClass::GraphicsClass(const GraphicsClass& other)
@@ -21,6 +32,7 @@ GraphicsClass::~GraphicsClass()
 bool GraphicsClass::Initialize(int screenWidth, int screenHeight, HWND hwnd)
 {
 	bool result;
+	D3DXMATRIX baseViewMatrix;
 
 	// Create the Direct3D object.
 	m_D3D = new D3DClass;
@@ -47,6 +59,25 @@ bool GraphicsClass::Initialize(int screenWidth, int screenHeight, HWND hwnd)
 	// Set the initial position of the camera.
 	m_Camera->SetPosition(0.0f, 0.0f, -15.0f);
 
+	// Initialize a base view matrix with the camera for 2D user interface rendering.
+	m_Camera->Render();
+	m_Camera->GetViewMatrix(baseViewMatrix);
+
+	// Create the text object.
+	m_Text = new TextClass;
+	if (!m_Text)
+	{
+		return false;
+	}
+
+	// Initialize the text object.
+	result = m_Text->Initialize(m_D3D->GetDevice(), m_D3D->GetDeviceContext(), hwnd, screenWidth, screenHeight, baseViewMatrix);
+	if (!result)
+	{
+		MessageBox(hwnd, L"Could not initialize the text object.", L"Error", MB_OK);
+		return false;
+	}
+
 	for (int i = 0; i < 4; i++)
 	{
 		// Create the model object.
@@ -59,7 +90,7 @@ bool GraphicsClass::Initialize(int screenWidth, int screenHeight, HWND hwnd)
 		// Initialize the model object.
 		switch (i)
 		{
-		case 0: 
+		case 0:
 			result = m_Model[i]->Initialize(m_D3D->GetDevice(), "../Project/data/cube.obj", L"../Project/data/ground.dds");
 			if (!result)
 			{
@@ -92,7 +123,38 @@ bool GraphicsClass::Initialize(int screenWidth, int screenHeight, HWND hwnd)
 			}
 			break;
 		}
+
+		allPolygonCount += m_Model[i]->GetPolygonCount();
 	}
+
+	// Create the light shader object.
+	m_LightShader = new LightShaderClass;
+	if (!m_LightShader)
+	{
+		return false;
+	}
+
+	// Initialize the light shader object.
+	result = m_LightShader->Initialize(m_D3D->GetDevice(), hwnd);
+	if (!result)
+	{
+		MessageBox(hwnd, L"Could not initialize the light shader object.", L"Error", MB_OK);
+		return false;
+	}
+
+	// Create the light object.
+	m_Light = new LightClass;
+	if (!m_Light)
+	{
+		return false;
+	}
+
+	// Initialize the light object.
+	m_Light->SetAmbientColor(0.15f, 0.15f, 0.15f, 1.0f);
+	m_Light->SetDiffuseColor(1.0f, 1.0f, 1.0f, 1.0f);
+	m_Light->SetDirection(1.0f, 0.0f, 0.0f);
+	m_Light->SetSpecularColor(1.0f, 1.0f, 1.0f, 1.0f);
+	m_Light->SetSpecularPower(32.0f);
 
 	// Create the texture shader object.
 	m_TextureShader = new TextureShaderClass;
@@ -101,7 +163,7 @@ bool GraphicsClass::Initialize(int screenWidth, int screenHeight, HWND hwnd)
 		return false;
 	}
 
-	// Initialize the color shader object.
+	// Initialize the texture shader object.
 	result = m_TextureShader->Initialize(m_D3D->GetDevice(), hwnd);
 	if (!result)
 	{
@@ -109,17 +171,47 @@ bool GraphicsClass::Initialize(int screenWidth, int screenHeight, HWND hwnd)
 		return false;
 	}
 
+	//// Create the bitmap object.
+	//m_Bitmap = new BitmapClass;
+	//if (!m_Bitmap)
+	//{
+	//	return false;
+	//}
+
+	//// Initialize the bitmap object.
+	//result = m_Bitmap->Initialize(m_D3D->GetDevice(), screenWidth, screenHeight, L"../Project/data/seafloor.dds", 256, 256);
+	//if (!result)
+	//{
+	//	MessageBox(hwnd, L"Could not initialize the bitmap object.", L"Error", MB_OK);
+	//	return false;
+	//}
+
 	return true;
 }
 
 void GraphicsClass::Shutdown()
 {
-	// Release the texture shader object.
-	if (m_TextureShader)
+	// Release the text object.
+	if (m_Text)
 	{
-		m_TextureShader->Shutdown();
-		delete m_TextureShader;
-		m_TextureShader = 0;
+		m_Text->Shutdown();
+		delete m_Text;
+		m_Text = 0;
+	}
+
+	// Release the light object.
+	if (m_Light)
+	{
+		delete m_Light;
+		m_Light = 0;
+	}
+
+	// Release the light shader object.
+	if (m_LightShader)
+	{
+		m_LightShader->Shutdown();
+		delete m_LightShader;
+		m_LightShader = 0;
 	}
 
 	// Release the model object.
@@ -131,6 +223,22 @@ void GraphicsClass::Shutdown()
 			delete m_Model[i];
 			m_Model[i] = 0;
 		}
+	}
+
+	//// Release the bitmap object.
+	//if (m_Bitmap)
+	//{
+	//	m_Bitmap->Shutdown();
+	//	delete m_Bitmap;
+	//	m_Bitmap = 0;
+	//}
+
+	// Release the texture shader object.
+	if (m_TextureShader)
+	{
+		m_TextureShader->Shutdown();
+		delete m_TextureShader;
+		m_TextureShader = 0;
 	}
 
 	// Release the camera object.
@@ -151,7 +259,7 @@ void GraphicsClass::Shutdown()
 	return;
 }
 
-bool GraphicsClass::Frame()
+bool GraphicsClass::Frame(int fps, int cpu, float frameTime)
 {
 	bool result;
 	static float rotation = 0.0f;
@@ -170,6 +278,26 @@ bool GraphicsClass::Frame()
 		return false;
 	}
 
+	// Set the frames per second.
+	result = m_Text->SetFps(fps, m_D3D->GetDeviceContext());
+	if (!result)
+	{
+		return false;
+	}
+
+	// Set the cpu usage.
+	result = m_Text->SetCpu(cpu, m_D3D->GetDeviceContext());
+	if (!result)
+	{
+		return false;
+	}
+
+	result = m_Text->SetPolygonNum(allPolygonCount, m_D3D->GetDeviceContext());
+	if (!result)
+	{
+		return false;
+	}
+
 	return true;
 }
 
@@ -180,11 +308,11 @@ CameraClass * GraphicsClass::GetCamera()
 
 bool GraphicsClass::Render(float rotation)
 {
-	D3DXMATRIX viewMatrix, projectionMatrix, worldMatrix;
+	D3DXMATRIX viewMatrix, projectionMatrix, worldMatrix, orthoMatrix;
 	bool result;
 
 	// Clear the buffers to begin the scene.
-	m_D3D->BeginScene(0.5f, 0.5f, 0.5f, 1.0f);
+	m_D3D->BeginScene(0.0f, 0.0f, 0.0f, 1.0f);
 
 	// Set of FillMode
 	result = m_D3D->ChangeFillMode();
@@ -200,47 +328,77 @@ bool GraphicsClass::Render(float rotation)
 	m_Camera->GetViewMatrix(viewMatrix);
 	m_D3D->GetWorldMatrix(worldMatrix);
 	m_D3D->GetProjectionMatrix(projectionMatrix);
+	m_D3D->GetOrthoMatrix(orthoMatrix);
 
-	// Rotate the world matrix by the rotation value so that the triangle will spin.	
-	// Set of FilteringMode
-	result = m_TextureShader->ChangeFilteringMode(m_D3D->GetDevice());
+	// Turn off the Z buffer to begin all 2D rendering.
+	m_D3D->TurnZBufferOff();
+
+	//// Put the bitmap vertex and index buffers on the graphics pipeline to prepare them for drawing.
+	//result = m_Bitmap->Render(m_D3D->GetDeviceContext(), 200, 200);
+	//if (!result)
+	//{
+	//	return false;
+	//}
+
+	//// Render the bitmap with the texture shader.
+	//result = m_TextureShader->Render(m_D3D->GetDeviceContext(), m_Bitmap->GetIndexCount(), worldMatrix, viewMatrix, orthoMatrix, m_Bitmap->GetTexture());
+	//if (!result)
+	//{
+	//	return false;
+	//}
+
+	// Turn on the alpha blending before rendering the text. 
+	m_D3D->TurnOnAlphaBlending();
+
+	// Render the text strings.
+	result = m_Text->Render(m_D3D->GetDeviceContext(), worldMatrix, orthoMatrix);
 	if (!result)
 	{
 		return false;
 	}
 
+	// Turn off alpha blending after rendering the text.
+	m_D3D->TurnOffAlphaBlending();
+
+	// Turn the Z buffer back on now that all 2D rendering has completed.
+	m_D3D->TurnZBufferOn();
+
+	//// Set of FilteringMode
+	//result = m_LightShader->ChangeFilteringMode(m_D3D->GetDevice());
+	//if (!result)
+	//{
+	//	return false;
+	//}
+	
 	// Put the model vertex and index buffers on the graphics pipeline to prepare them for drawing.		
 	for (int i = 0; i < 4; i++)
 	{
 		switch (i)
 		{
 		case 0:
-			m_Model[i]->SetScaling(100, 0.1, 100);			
+			m_Model[i]->SetScaling(1000, 0.1, 1000);
 			m_Model[i]->SetTranslation(0, -10, 50);
+			m_Model[i]->SetRotation('x', -0.1);
 			break;
-		case 1:						
+		case 1:
 			m_Model[i]->SetRotation('y', rotation);
 			m_Model[i]->SetTranslation(-2, -2, 0);
 			break;
-		case 2:			
+		case 2:
 			m_Model[i]->SetScaling(2, 2, 2);
 			m_Model[i]->SetRotation('y', rotation);
 			break;
-		case 3:						
+		case 3:
 			m_Model[i]->SetScaling(0.01, 0.01, 0.01);
 			m_Model[i]->SetRotation('y', rotation);
 			m_Model[i]->SetTranslation(4, -2, 0);
 			break;
-		}		
+		}
 
 		m_Model[i]->Render(m_D3D->GetDeviceContext());
 
-		// Render the model using the texture shader.
-		result = m_TextureShader->Render(m_D3D->GetDeviceContext(), m_Model[i]->GetIndexCount(), m_Model[i]->GetWorldMatrix(), viewMatrix, projectionMatrix, m_Model[i]->GetTexture());
-		if (!result)
-		{
-			return false;
-		}
+		// Render the model using the light shader.
+		result = m_LightShader->Render(m_D3D->GetDeviceContext(), m_Model[i]->GetIndexCount(), m_Model[i]->GetWorldMatrix(), viewMatrix, projectionMatrix, m_Model[i]->GetTexture(), m_Light->GetDirection(), m_Light->GetAmbientColor(), m_Light->GetDiffuseColor(), m_Camera->GetPosition(), m_Light->GetSpecularColor(), m_Light->GetSpecularPower(), useLightingEffect);
 	}
 
 	// Present the rendered scene to the screen.

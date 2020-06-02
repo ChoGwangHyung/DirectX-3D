@@ -49,8 +49,15 @@ public:
 
 	bool ChangeFillMode();
 
+	void TurnZBufferOn();
+	void TurnZBufferOff();
+
+	void TurnOnAlphaBlending();
+	void TurnOffAlphaBlending();
+
 private:
 	bool m_vsync_enabled;
+
 	int m_videoCardMemory;
 	char m_videoCardDescription[128];
 	IDXGISwapChain* m_swapChain;
@@ -62,9 +69,15 @@ private:
 	ID3D11DepthStencilView* m_depthStencilView;
 	ID3D11RasterizerState* m_rasterState;
 	D3D11_RASTERIZER_DESC rasterDesc;
+
 	D3DXMATRIX m_projectionMatrix;
 	D3DXMATRIX m_worldMatrix;
 	D3DXMATRIX m_orthoMatrix;
+
+	ID3D11DepthStencilState* m_depthDisabledStencilState;
+
+	ID3D11BlendState* m_alphaEnableBlendingState;
+	ID3D11BlendState* m_alphaDisableBlendingState;
 };
 
 #endif

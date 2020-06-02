@@ -12,6 +12,8 @@ ModelClass::ModelClass()
 	D3DXMatrixIdentity(&m_scaling);
 	D3DXMatrixIdentity(&m_rotation);
 	D3DXMatrixIdentity(&m_translation);
+
+	polygoneCount = 0;
 }
 
 ModelClass::ModelClass(const ModelClass& other)
@@ -75,8 +77,6 @@ void ModelClass::Render(ID3D11DeviceContext* deviceContext)
 	// Put the vertex and index buffers on the graphics pipeline to prepare them for drawing.
 	RenderBuffers(deviceContext);
 
-
-
 	return;
 }
 
@@ -123,6 +123,11 @@ void ModelClass::SetRotation(char axis, float rotation)
 void ModelClass::SetTranslation(float x, float y, float z)
 {
 	D3DXMatrixTranslation(&m_translation, x, y, z);
+}
+
+int ModelClass::GetPolygonCount()
+{
+	return polygoneCount;
 }
 
 bool ModelClass::InitializeBuffers(ID3D11Device* device)
@@ -464,6 +469,8 @@ bool ModelClass::LoadModel(char* filename)
 		m_vertexCount = (m_faceCount * 6);
 		m_faceCount *= 2;
 	}
+
+	polygoneCount = m_faceCount;
 
 	// Set the number of indices to be the same as the vertex count.
 	m_indexCount = m_vertexCount;

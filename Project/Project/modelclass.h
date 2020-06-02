@@ -56,6 +56,8 @@ public:
 	void SetRotation(char, float);
 	void SetTranslation(float, float, float);
 
+	int GetPolygonCount();
+
 private:
 	bool InitializeBuffers(ID3D11Device*);
 	void ShutdownBuffers();
@@ -80,5 +82,8 @@ private:
 	D3DXMATRIX m_scaling;
 	D3DXMATRIX m_rotation;
 	D3DXMATRIX m_translation;
+
+public:
+	int polygoneCount;
 };
 #endif

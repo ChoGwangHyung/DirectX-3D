@@ -2,11 +2,15 @@
 
 #ifndef _SYSTEMCLASS_H_
 #define _SYSTEMCLASS_H_
+
 #define WIN32_LEAN_AND_MEAN
 
 #include <windows.h>
 #include "inputclass.h"
 #include "graphicsclass.h"
+#include "fpsclass.h"
+#include "cpuclass.h"
+#include "timerclass.h"
 
 class SystemClass
 {
@@ -34,6 +38,11 @@ private:
 	InputClass* m_Input;
 	GraphicsClass* m_Graphics;
 	CameraClass* m_Camera;
+	FpsClass* m_Fps;
+	CpuClass* m_Cpu;
+	TimerClass* m_Timer;
+
+	int m_screenWidth, m_screenHeight;
 };
 
 // Function prototypes

@@ -1,4 +1,5 @@
 #include "cameraclass.h"
+#include <math.h>
 
 CameraClass::CameraClass()
 {
@@ -32,6 +33,34 @@ void CameraClass::SetRotation(float x, float y, float z)
 	m_rotationY = y;
 	m_rotationZ = z;
 	return;
+}
+
+void CameraClass::GoFoward()
+{
+	m_positionX += m_viewMatrix._13;
+	m_positionY += m_viewMatrix._23;
+	m_positionZ += m_viewMatrix._33;
+}
+
+void CameraClass::GoBack()
+{
+	m_positionX -= m_viewMatrix._13;
+	m_positionY -= m_viewMatrix._23;
+	m_positionZ -= m_viewMatrix._33;
+}
+
+void CameraClass::GoLeft()
+{
+	m_positionX -= m_viewMatrix._11;
+	m_positionY -= m_viewMatrix._21;
+	m_positionZ -= m_viewMatrix._31;
+}
+
+void CameraClass::GoRight()
+{
+	m_positionX += m_viewMatrix._11;
+	m_positionY += m_viewMatrix._21;
+	m_positionZ += m_viewMatrix._31;
 }
 
 D3DXVECTOR3 CameraClass::GetPosition()
