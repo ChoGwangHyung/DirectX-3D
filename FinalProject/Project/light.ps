@@ -1,0 +1,94 @@
+#define NUM_LIGHTS 26
+
+Texture2D shaderTexture;
+SamplerState SampleType;
+
+cbuffer LightColorBuffer
+{
+	float4 diffuseColor[NUM_LIGHTS];
+	float4 directDiffColor;
+	float4 directAmbColor;
+	float4 directSpecColor;
+	float specularPower;
+	float3 lightDirection;
+	float range;
+	float3 att;
+};
+
+// Type definitions
+struct PixelInputType
+{
+	float4 position : SV_POSITION;
+	float2 tex : TEXCOORD0;
+	float3 normal : NORMAL;
+	float3 viewDirection : TEXCOORD1;
+	float3 lightPos[NUM_LIGHTS] : TEXCOORDARR;
+}; 
+ 
+ 
+float4 LightPixelShader(PixelInputType input) : SV_TARGET
+{
+ float4 textureColor;
+ float lightIntensity[NUM_LIGHTS];
+ float4 color = float4(0.0f,0.0f,0.0f,0.0f);
+ float4 colors[NUM_LIGHTS];
+ float4 directColor = directAmbColor;
+ float4 directSpecular = float4(0.0f, 0.0f, 0.0f, 0.0f);
+ float3 lightDir = -lightDirection;
+ float directLightIntensity = saturate(dot(input.normal, lightDir));
+ float3 reflection;
+
+
+ textureColor = shaderTexture.Sample(SampleType, input.tex);
+
+ if(directLightIntensity > 0.0f)
+ {
+	directColor += (directDiffColor * directLightIntensity);
+
+	directColor = saturate(directColor);
+
+	reflection = normalize(2* directLightIntensity * input.normal - lightDir);
+
+	directSpecular = pow(saturate(dot(reflection, input.viewDirection)) , specularPower);
+
+ }
+
+ directColor = directColor * textureColor;
+ directColor = saturate(directColor+ directSpecular*directSpecColor);
+
+ float d[NUM_LIGHTS];
+
+ for(int i = 0; i<NUM_LIGHTS;i++)
+ {
+
+   d[i] = length(input.lightPos[i]);
+	if(d[i] > range)
+	{
+	colors[i] = float4(0,0,0,0);
+	}
+	else
+	{
+		//colors[i] = diffuseColor[i]/5;
+		lightIntensity[i]= dot(input.lightPos[i]/d[i] , input.normal);
+		if(lightIntensity[i] > 0.0f)
+		{
+		float attenuation;
+			if(i<22)
+			attenuation = att[0] + att[1]*d[i] + att[2]*d[i]*d[i];
+			else
+			attenuation = 1.0f + 0.2f*d[i] + att[2]*d[i]*d[i];
+
+			colors[i] += lightIntensity[i] * diffuseColor[i];
+			colors[i] /= attenuation;
+
+		}
+	}
+ }
+  for(i=0; i<NUM_LIGHTS; i++)
+ {
+	color += colors[i];
+ }
+ color = saturate(color * textureColor);
+ color = color +directColor;
+ return color;
+}

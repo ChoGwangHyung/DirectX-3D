@@ -1,0 +1,59 @@
+
+Texture2D cloudTexture1 : register(t0);
+Texture2D cloudTexture2 : register(t1);
+SamplerState SampleType;
+
+cbuffer SkyBuffer
+{
+	float firstTranslationX;
+	float firstTranslationZ;
+	float secondTranslationX;
+	float secondTranslationZ;
+	float brightness;
+	float3 padding;
+};
+
+
+//////////////
+// TYPEDEFS //
+//////////////
+struct PixelInputType
+{
+	float4 position : SV_POSITION;
+	float2 tex : TEXCOORD0;
+};
+
+
+////////////////////////////////////////////////////////////////////////////////
+// Pixel Shader
+////////////////////////////////////////////////////////////////////////////////
+float4 SkyPlanePixelShader(PixelInputType input) : SV_TARGET
+{
+	float2 sampleLocation;
+	float4 textureColor1;
+	float4 textureColor2;
+	float4 finalColor;
+	
+	
+	// 픽셀을 샘플링하는 위치를 첫 번째 텍스처 변환 값을 사용하여 변환합니다.
+	sampleLocation.x = input.tex.x + firstTranslationX;
+	sampleLocation.y = input.tex.y + firstTranslationZ;
+	
+	// 이 텍스처 좌표 위치에서 샘플러를 사용하여 첫 번째 구름 텍스처에서 픽셀 색상을 샘플링합니다.
+	textureColor1 = cloudTexture1.Sample(SampleType, sampleLocation);
+	
+	// 픽셀을 샘플링하는 위치를 두 번째 텍스처 변환 값을 사용하여 변환합니다.
+	sampleLocation.x = input.tex.x + secondTranslationX;
+	sampleLocation.y = input.tex.y + secondTranslationZ;
+	
+	// 이 텍스처 좌표 위치에서 샘플러를 사용하여 두 번째 클라우드 텍스처에서 픽셀 색상을 샘플링합니다.
+	textureColor2 = cloudTexture2.Sample(SampleType, sampleLocation);
+	
+	// 두 구름 텍스처를 고르게 결합합니다.
+	finalColor = lerp(textureColor1, textureColor2, 0.5f);
+	
+	// 입력 된 밝기 값에 따라 결합 된 구름 텍스처의 밝기를 줄입니다.
+	finalColor = finalColor * brightness;
+	
+	 return finalColor;
+}
